@@ -9,19 +9,22 @@ import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import { socket } from './socket'
+import CircularProgress from '@mui/material/CircularProgress'
 
 function App() {
-  const [mode, setMode] = React.useState('')
   const [playerName, setPlayerName] = React.useState('')
   const [modeInput, setModeInput] = React.useState(false)
+  const [mode, setMode] = React.useState('')
+  const [isLoading, setIsLoading] = React.useState(false)
 
   const handleChangeName = (event) => {
     setPlayerName(event.target.value)
   }
   const handleChangeMode = (event) => {
     setMode(event.target.value)
-
-    socket.emit('set-mode', event.target.value)
+    socket.emit('set-mode', {
+      mode: event.target.value
+    })
   }
 
   const connect = () => {
@@ -32,46 +35,49 @@ function App() {
 
   useEffect(() => {
     socket.connect()
-
     socket.on('joined-game', (e) => {
+      setIsLoading(true)
       console.log(e)
     })
-
-    socket.on('player-disconnected', (e) => {
-      console.log('Se desconecto', e)
-    })
-
     socket.on('player-connected', (e) => {
       console.log('Se conecto', e)
     })
-
+    socket.on('player-disconnected', (e) => {
+      console.log('Se desconecto', e)
+    })
     socket.on('table-assigned', (e) => {
-      console.log('Carton asignado', e)
+      console.log('Se asigno el carton', e)
     })
-    socket.once('lobby-closed', (e) => {
-      setModeInput(true)
+    socket.on('lobby-closed', (e) => {
+      console.log('Se cerro el lobby', e)
+      setIsLoading(false)
     })
-
-    return () => {
-      socket.off('joined-game')
-      socket.off('player-disconnected')
-    }
   }, [])
 
   return (
     <>
-      <Typography variant='h1' component='h1'>
+      <Typography variant='h3' component='h3' sx={{ marginBottom: 10 }}>
         Bingo
       </Typography>
-      <Box sx={{ minWidth: 120, marginTop: 10, component: 'form' }}>
-        <FormControl fullWidth sx={{ marginBottom: 5 }}>
-          <TextField
-            label='Ingresa tu nombre jugador'
-            variant='outlined'
-            onChange={handleChangeName}
-          />
-        </FormControl>
-        <FormControl fullWidth>
+
+      {isLoading ? (
+        <>
+          <CircularProgress sx={{ marginBottom: 5 }} />
+          <Typography variant='h4' component='h4'>
+            Esperando a otros jugadores
+          </Typography>
+        </>
+      ) : (
+        <Box sx={{ minWidth: 120, component: 'form' }}>
+          <FormControl fullWidth>
+            <TextField
+              value={playerName}
+              label='Ingresa tu nombre jugador'
+              variant='outlined'
+              onChange={handleChangeName}
+            />
+          </FormControl>
+          {/* <FormControl fullWidth>
           <InputLabel>Selecciona el modo de juego</InputLabel>
           <Select
             value={mode}
@@ -82,11 +88,12 @@ function App() {
             <MenuItem value={'NORMAL'}>NORMAL</MenuItem>
             <MenuItem value={'FULL'}>FULL</MenuItem>
           </Select>
-        </FormControl>
-        <Button variant='outlined' sx={{ marginTop: 5 }} onClick={connect}>
-          Conectarse
-        </Button>
-      </Box>
+        </FormControl> */}
+          <Button variant='outlined' sx={{ marginTop: 5 }} onClick={connect}>
+            Conectarse
+          </Button>
+        </Box>
+      )}
     </>
   )
 }
