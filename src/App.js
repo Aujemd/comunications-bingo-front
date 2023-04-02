@@ -12,7 +12,9 @@ import { socket } from './socket'
 import CircularProgress from '@mui/material/CircularProgress'
 import SentimentVeryDissatisfiedIcon from '@mui/icons-material/SentimentVeryDissatisfied'
 import { Table } from './table'
-
+import Modal from '@mui/material/Modal'
+import Stack from '@mui/material/Stack'
+import InsertEmoticonIcon from '@mui/icons-material/InsertEmoticon'
 function App() {
   const [playerName, setPlayerName] = React.useState('')
   const [modeInput, setModeInput] = React.useState(false)
@@ -20,6 +22,8 @@ function App() {
   const [isLoading, setIsLoading] = React.useState(false)
   const [gameStarted, setGameStarted] = React.useState(false)
   const [table, setTable] = React.useState(undefined)
+  const [open, setOpen] = React.useState(false)
+  const [waitingBoard, setWaitingBoard] = React.useState(false)
 
   const handleChangeName = (event) => {
     setPlayerName(event.target.value)
@@ -34,6 +38,13 @@ function App() {
   const connect = () => {
     socket.emit('request-game', {
       playerName
+    })
+    setWaitingBoard(true)
+  }
+
+  const handleModalButtonClick = (answer) => {
+    socket.emit('answer-table', {
+      accept: answer
     })
   }
 
@@ -54,10 +65,11 @@ function App() {
       const transposedValues = e.table[0].map((_, colIndex) => e.table.map((row) => row[colIndex]))
 
       setTable(transposedValues)
+      setOpen(true)
     })
-    socket.on('lobby-closed', () => {
-      console.log('Se cerro el lobby')
+    socket.on('game-has-started', () => {
       setIsLoading(false)
+      setWaitingBoard(false)
     })
     socket.on('current-status', (e) => {
       console.log(e)
@@ -68,6 +80,10 @@ function App() {
         setGameStarted(true)
       }
     })
+
+    socket.on('num-announced', (e) => {
+      console.log('SALIO EL', e)
+    })
   }, [])
 
   return (
@@ -76,7 +92,7 @@ function App() {
         Bingo
       </Typography>
 
-      {gameStarted ? (
+      {gameStarted && !table && !waitingBoard ? (
         <>
           <Typography variant='h5' component='h5'>
             La partida se cerró intentalo más tarde <SentimentVeryDissatisfiedIcon />
@@ -89,6 +105,8 @@ function App() {
             Esperando a otros jugadores
           </Typography>
         </>
+      ) : table ? (
+        <Table table={table} />
       ) : (
         <Box sx={{ minWidth: 120, component: 'form' }}>
           <FormControl fullWidth>
@@ -116,7 +134,43 @@ function App() {
           </Button>
         </Box>
       )}
-      {table && <Table table={table} />}
+
+      <Modal open={open} onClose={() => setOpen(false)}>
+        <Box
+          padding={5}
+          sx={{
+            backgroundColor: 'white',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            flexDirection: 'column'
+          }}
+        >
+          <Typography variant='h6' component='h6'>
+            Cartón asignado
+          </Typography>
+          {table && <Table table={table} />}
+          <Stack direction='row' spacing={2} marginTop={5}>
+            <Button
+              variant='outlined'
+              endIcon={<SentimentVeryDissatisfiedIcon />}
+              onClick={() => handleModalButtonClick(false)}
+            >
+              Rechazar
+            </Button>
+            <Button
+              variant='contained'
+              endIcon={<InsertEmoticonIcon />}
+              onClick={() => {
+                handleModalButtonClick(true)
+                setOpen(false)
+              }}
+            >
+              Aceptar
+            </Button>
+          </Stack>
+        </Box>
+      </Modal>
     </>
   )
 }
