@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useEffect } from 'react'
 
 import Box from '@mui/material/Box'
@@ -24,6 +25,7 @@ function App() {
   const [table, setTable] = React.useState(undefined)
   const [open, setOpen] = React.useState(false)
   const [waitingBoard, setWaitingBoard] = React.useState(false)
+  const [numbers, setNumbers] = React.useState([])
 
   const handleChangeName = (event) => {
     setPlayerName(event.target.value)
@@ -52,16 +54,10 @@ function App() {
     socket.connect()
     socket.on('joined-game', (e) => {
       setIsLoading(true)
-      console.log(e)
     })
-    socket.on('player-connected', (e) => {
-      console.log('Se conecto', e)
-    })
-    socket.on('player-disconnected', (e) => {
-      console.log('Se desconecto', e)
-    })
+    socket.on('player-connected', (e) => {})
+    socket.on('player-disconnected', (e) => {})
     socket.on('table-assigned', (e) => {
-      console.log('Se asigno el carton', e)
       const transposedValues = e.table[0].map((_, colIndex) => e.table.map((row) => row[colIndex]))
 
       setTable(transposedValues)
@@ -72,7 +68,6 @@ function App() {
       setWaitingBoard(false)
     })
     socket.on('current-status', (e) => {
-      console.log(e)
       if (e.currentGameMode) {
         setModeInput(true)
       }
@@ -82,9 +77,121 @@ function App() {
     })
 
     socket.on('num-announced', (e) => {
-      console.log('SALIO EL', e)
+      setNumbers([...numbers, e.number].sort((a, b) => a - b))
     })
-  }, [])
+  })
+
+  const isMarked = (value) => {
+    if (value === -1) {
+      return true
+    }
+    let marked = false
+    for (let index = 0; index < numbers.length; index++) {
+      if (value === numbers[index]) {
+        marked = true
+      }
+    }
+
+    return marked
+  }
+
+  function checkTable(table, numbers) {
+    console.log('revisando con', table, numbers)
+    // Verificar filas
+    for (let row of table) {
+      if (numbers.every((num) => row.includes(num))) {
+        return true
+      }
+    }
+
+    // Verificar columnas
+    for (let j = 0; j < 5; j++) {
+      let column = []
+      for (let i = 0; i < 5; i++) {
+        column.push(table[i][j])
+      }
+      if (numbers.every((num) => column.includes(num))) {
+        return true
+      }
+    }
+
+    // Verificar diagonal principal
+    let diagonalP = []
+    for (let i = 0; i < 5; i++) {
+      diagonalP.push(table[i][i])
+    }
+    if (numbers.every((num) => diagonalP.includes(num))) {
+      return true
+    }
+
+    // Verificar diagonal secundaria
+    let diagonalS = []
+    for (let i = 0; i < 5; i++) {
+      diagonalS.push(table[i][4 - i])
+    }
+    if (numbers.every((num) => diagonalS.includes(num))) {
+      return true
+    }
+
+    // Si no se encontró ningún ganador, retorna false
+    return false
+  }
+
+  useEffect(() => {
+    if (table) {
+      const result = checkTable(table, numbers)
+
+      console.log(result)
+      // let win = true
+      // for (let i = 0; i < 5; i++) {
+      //   win = true
+      //   for (let j = 0; j < 5; j++) {
+      //     if (!isMarked(table[i][j])) {
+      //       win = false
+      //       break
+      //     }
+      //   }
+      //   if (win) {
+      //     socket.emit('claim-win', {
+      //       table
+      //     })
+      //     return
+      //   }
+      // }
+      // for (let i = 0; i < 5; i++) {
+      //   win = true
+      //   for (let j = 0; j < 5; j++) {
+      //     if (!isMarked(table[j][i])) {
+      //       win = false
+      //       break
+      //     }
+      //   }
+      //   if (win) {
+      //     socket.emit('claim-win', {
+      //       table
+      //     })
+      //     return
+      //   }
+      // }
+      // if (
+      //   (isMarked(table[0][0]) &&
+      //     isMarked(table[1][1]) &&
+      //     isMarked(table[2][2]) &&
+      //     isMarked(table[3][3]) &&
+      //     isMarked(table[4][4])) ||
+      //   (isMarked(table[0][4]) &&
+      //     isMarked(table[1][3]) &&
+      //     isMarked(table[2][2]) &&
+      //     isMarked(table[3][1]) &&
+      //     isMarked(table[4][0]))
+      // ) {
+      //   socket.emit('claim-win', {
+      //     table
+      //   })
+      //   return
+      // }
+    }
+  }, [table, numbers])
 
   return (
     <>
@@ -92,6 +199,20 @@ function App() {
         Bingo
       </Typography>
 
+      {numbers.length > 0 && (
+        <>
+          <Typography variant='p' component='p'>
+            Números anunciados
+          </Typography>
+          <Box sx={{ display: 'flex', marginBottom: 10, flexWrap: 'wrap' }}>
+            {numbers.map((number) => (
+              <Typography key={number} variant='p' component='p' sx={{ display: 'inline' }}>
+                {number},
+              </Typography>
+            ))}
+          </Box>
+        </>
+      )}
       {gameStarted && !table && !waitingBoard ? (
         <>
           <Typography variant='h5' component='h5'>
@@ -106,7 +227,7 @@ function App() {
           </Typography>
         </>
       ) : table ? (
-        <Table table={table} />
+        <Table table={table} numbers={numbers} />
       ) : (
         <Box sx={{ minWidth: 120, component: 'form' }}>
           <FormControl fullWidth>
