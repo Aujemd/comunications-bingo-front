@@ -26,6 +26,9 @@ function App() {
   const [open, setOpen] = React.useState(false)
   const [waitingBoard, setWaitingBoard] = React.useState(false)
   const [numbers, setNumbers] = React.useState([])
+  const [players, setPlayers] = React.useState([])
+  const [win, setWin] = React.useState(false)
+  const [winner, setWinner] = React.useState(undefined)
 
   const handleChangeName = (event) => {
     setPlayerName(event.target.value)
@@ -44,10 +47,16 @@ function App() {
     setWaitingBoard(true)
   }
 
+  const startGame = () => {
+    socket.emit('Start', 'juego iniciado')
+    setWaitingBoard(true)
+  }
+
   const handleModalButtonClick = (answer) => {
     socket.emit('answer-table', {
       accept: answer
     })
+    
   }
 
   useEffect(() => {
@@ -55,7 +64,10 @@ function App() {
     socket.on('joined-game', (e) => {
       setIsLoading(true)
     })
-    socket.on('player-connected', (e) => {})
+    socket.on('player-connected', (e) => {
+      console.log(e)
+      setPlayers(e.activeUsers)
+    })
     socket.on('player-disconnected', (e) => {})
     socket.on('table-assigned', (e) => {
       const transposedValues = e.table[0].map((_, colIndex) => e.table.map((row) => row[colIndex]))
@@ -78,6 +90,13 @@ function App() {
 
     socket.on('num-announced', (e) => {
       setNumbers([...numbers, e.number].sort((a, b) => a - b))
+    })
+
+    socket.on('win-announced', (e) => {
+      setWin(true)
+      console.log('ganador')
+      console.log(e)
+      setWinner(e.winner)
     })
   })
 
@@ -142,6 +161,15 @@ function App() {
       const result = checkTable(table, numbers)
 
       console.log(result)
+      socket.emit('claim-win', {
+        table
+      })
+
+      // socket.on('win-announced', (e) => {
+      //   console.log('ganador')
+      //   console.log(e)
+      // })
+
       // let win = true
       // for (let i = 0; i < 5; i++) {
       //   win = true
@@ -198,7 +226,37 @@ function App() {
       <Typography variant='h3' component='h3' sx={{ marginBottom: 10 }}>
         Bingo
       </Typography>
-
+      {win && (
+        <>
+          <Typography variant='p' component='p'>
+            Ganador
+          </Typography>
+          <Box sx={{ display: 'flex', marginBottom: 10, flexWrap: 'wrap' }}>
+              <Typography variant='p' component='p' sx={{ display: 'inline' }}>
+              {winner.name} <br/>
+              </Typography>
+              <Table table={winner.table} />
+          </Box>
+        </>
+      )}
+      {players.length > 0 && (
+        <>
+          <Typography variant='p' component='p'>
+            Jugadores
+          </Typography>
+          <Box sx={{ display: 'flex', marginBottom: 10, flexWrap: 'wrap' }}>
+            <ul>
+              {players.map((player) => (
+                <li key={player.id}>
+                  <Typography variant='p' component='p' sx={{ display: 'inline' }}>
+                  {player.name} <br/>
+                  </Typography>
+                </li>
+              ))}
+            </ul>
+          </Box>
+        </>
+      )}
       {numbers.length > 0 && (
         <>
           <Typography variant='p' component='p'>
@@ -225,6 +283,9 @@ function App() {
           <Typography variant='h4' component='h4'>
             Esperando a otros jugadores
           </Typography>
+          <Button variant='outlined' sx={{ marginTop: 5 }} onClick={startGame}>
+            Iniciar partida
+          </Button>
         </>
       ) : table ? (
         <Table table={table} numbers={numbers} />
