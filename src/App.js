@@ -29,6 +29,7 @@ function App() {
   const [players, setPlayers] = React.useState([])
   const [win, setWin] = React.useState(false)
   const [winner, setWinner] = React.useState(undefined)
+  const [currentNumber, setCurrentNumber] = React.useState(0)
 
   const handleChangeName = (event) => {
     setPlayerName(event.target.value)
@@ -90,6 +91,7 @@ function App() {
 
     socket.on('num-announced', (e) => {
       setNumbers([...numbers, e.number].sort((a, b) => a - b))
+      setCurrentNumber(e.number)
     })
 
     socket.on('win-announced', (e) => {
@@ -223,20 +225,23 @@ function App() {
 
   return (
     <>
+      <div style={{display: "flex", flexDirection: "column", width: "100%", justifyContent: "center", alignItems: "center"}}>
       <Typography variant='h3' component='h3' sx={{ marginBottom: 10 }}>
         Bingo
       </Typography>
       {win && (
         <>
-          <Typography variant='p' component='p'>
-            Ganador
-          </Typography>
-          <Box sx={{ display: 'flex', marginBottom: 10, flexWrap: 'wrap' }}>
-              <Typography variant='p' component='p' sx={{ display: 'inline' }}>
-              {winner.name} <br/>
-              </Typography>
-              <Table table={winner.table} />
-          </Box>
+          <div style={{display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center"}}>
+            <Typography variant='p' component='p'>
+              Ganador
+            </Typography>
+            <Typography variant='p' component='p' sx={{ display: 'inline' }}>
+                {winner.name} <br/>
+            </Typography>
+            <Box sx={{ display: 'flex', marginBottom: 10, flexWrap: 'wrap' }}>
+                <Table table={winner.table} />
+            </Box>
+          </div>
         </>
       )}
       {players.length > 0 && (
@@ -269,6 +274,9 @@ function App() {
               </Typography>
             ))}
           </Box>
+          <Typography variant='p' component='p'>
+            {currentNumber}
+          </Typography>
         </>
       )}
       {gameStarted && !table && !waitingBoard ? (
@@ -316,6 +324,7 @@ function App() {
           </Button>
         </Box>
       )}
+      </div>
 
       <Modal open={open} onClose={() => setOpen(false)}>
         <Box
